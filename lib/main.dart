@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:charts_flutter/flutter.dart' as charts;
@@ -34,7 +35,7 @@ class _DisplayState extends State<Display> with SingleTickerProviderStateMixin {
   void initState() {
     // TODO: implement initState
     super.initState();
-    _tabController = new TabController(length: 2, vsync: this);
+    _tabController = new TabController(length: 3, vsync: this, initialIndex: 1);
   }
 
   @override
@@ -42,8 +43,9 @@ class _DisplayState extends State<Display> with SingleTickerProviderStateMixin {
     return Scaffold(
       body: TabBarView(
         children: [
-          Overview(),
           Explore(),
+          Home(),
+          Overview(),
         ],
         controller: _tabController,
       ),
@@ -65,10 +67,327 @@ class _DisplayState extends State<Display> with SingleTickerProviderStateMixin {
           indicatorSize: TabBarIndicatorSize.tab,
           indicator: BoxDecoration(
               color: Colors.white, borderRadius: BorderRadius.circular(20.0)),
-          tabs: <Widget>[Text("Overview"), Text("Explore")],
+          tabs: <Widget>[Text("Explore"),Text("Home"), Text("Overview")],
         ),
       ),
     );
+  }
+}
+
+class Home extends StatefulWidget {
+  @override
+  _HomeState createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  Future _loadTotalCases() async {
+    setState(() {
+      isLoading = true;
+    });
+    final response = await http.get("https://api.covid19india.org/data.json");
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body);
+      setState(() {
+        isLoading = false;
+      });
+      return data;
+    }
+  }
+
+  Future data;
+  bool isLoading = false;
+  @override
+  void initState() {
+    data = _loadTotalCases();
+    super.initState();
+  }
+
+  final RefreshController _refreshController = RefreshController();
+  @override
+  Widget build(BuildContext context) {
+    return isLoading
+        ? Center(
+            child: CircularProgressIndicator(),
+          )
+        : SmartRefresher(
+            controller: _refreshController,
+            onRefresh: () async {
+              _loadTotalCases();
+              isLoading
+                  ? _refreshController.refreshToIdle()
+                  : _refreshController.refreshCompleted();
+            },
+            child: ListView(
+              children: <Widget>[
+                Container(
+                  height: 200,
+                  margin: EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.all(4),
+                  child: Card(
+                    elevation: 20.0,
+                    color: Colors.blueAccent,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Center(
+                          child: Text(
+                            "TOTAL CONFIRMED",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 18,
+                        ),
+                        FutureBuilder(
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              var total = snapshot.data["statewise"];
+                              var totalCases;
+                              var deltaConfirmed;
+                              total.forEach((f) {
+                                if (f["statecode"].compareTo("TT") == 0) {
+                                  totalCases = f["confirmed"];
+                                  deltaConfirmed = f["deltaconfirmed"];
+                                }
+                              });
+                              return Column(
+                                children: <Widget>[
+                                  Text(
+                                    totalCases,
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                  SizedBox(
+                                    height: 8,
+                                  ),
+                                  Text(
+                                    "[+" + deltaConfirmed.toString() + "]",
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                ],
+                              );
+                            } else {
+                              return CircularProgressIndicator();
+                            }
+                          },
+                          future: data,
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 200,
+                  margin: EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.all(4),
+                  child: Card(
+                    elevation: 20.0,
+                    color: Colors.purple,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Center(
+                          child: Text(
+                            "TOTAL ACTIVE",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 18,
+                        ),
+                        FutureBuilder(
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              var total = snapshot.data["statewise"];
+                              var totalActive;
+                              total.forEach((f) {
+                                if (f["statecode"].compareTo("TT") == 0) {
+                                  totalActive = f["active"];
+                                }
+                              });
+                              return Text(
+                                totalActive,
+                                style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2),
+                              );
+                            } else {
+                              return CircularProgressIndicator();
+                            }
+                          },
+                          future: data,
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 200,
+                  margin: EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.all(4),
+                  child: Card(
+                    elevation: 20.0,
+                    color: Colors.green,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Center(
+                          child: Text(
+                            "TOTAL RECOVERED",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 18,
+                        ),
+                        FutureBuilder(
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              var total = snapshot.data["statewise"];
+                              var totalRecovered;
+                              var deltaRecovered;
+                              total.forEach((f) {
+                                if (f["statecode"].compareTo("TT") == 0) {
+                                  totalRecovered = f["recovered"];
+                                  deltaRecovered = f["deltarecovered"];
+                                }
+                              });
+                              return Column(
+                                children: <Widget>[
+                                  Text(
+                                    totalRecovered,
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                  SizedBox(
+                                    height: 8,
+                                  ),
+                                  Text(
+                                    "[+" + deltaRecovered + "]",
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                ],
+                              );
+                            } else {
+                              return CircularProgressIndicator();
+                            }
+                          },
+                          future: data,
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 200,
+                  margin: EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.all(4),
+                  child: Card(
+                    elevation: 20.0,
+                    color: Colors.red,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Center(
+                          child: Text(
+                            "TOTAL DECEASED",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 18,
+                        ),
+                        FutureBuilder(
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              var total = snapshot.data["statewise"];
+                              var totalDeaths;
+                              var deltaDeceased;
+                              total.forEach((f) {
+                                if (f["statecode"].compareTo("TT") == 0) {
+                                  totalDeaths = f["deaths"];
+                                  deltaDeceased = f["deltadeaths"];
+                                }
+                              });
+                              return Column(
+                                children: <Widget>[
+                                  Text(
+                                    totalDeaths,
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                  SizedBox(
+                                    height: 8,
+                                  ),
+                                  Text(
+                                    "[+" + deltaDeceased + "]",
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                ],
+                              );
+                            } else {
+                              return CircularProgressIndicator();
+                            }
+                          },
+                          future: data,
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 200,
+                  margin: EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.all(4),
+                  child: Card(
+                    elevation: 20.0,
+                    color: Colors.white,
+                    child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Center(
+                            child: Text(
+                              "Developed By SH4LIN",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  color: Colors.black),
+                            ),
+                          ),
+                        ]),
+                  ),
+                )
+              ],
+            ),
+          );
   }
 }
 
@@ -137,8 +456,12 @@ class _OverviewState extends State<Overview> {
       var tested = data["tested"] as List;
       print(tested);
       tested.forEach((f) {
-        submittedReport.add(f["totalsamplestested"] == ""?0:num.parse(f["totalsamplestested"].replaceAll(',','')));
-        positiveReport.add(f["totalpositivecases"] == ""?0:num.parse(f["totalpositivecases"].replaceAll(',','')));
+        submittedReport.add(f["totalsamplestested"] == ""
+            ? 0
+            : num.parse(f["totalsamplestested"].replaceAll(',', '')));
+        positiveReport.add(f["totalpositivecases"] == ""
+            ? 0
+            : num.parse(f["totalpositivecases"].replaceAll(',', '')));
         testedDate.add(f["updatetimestamp"]);
       });
       int count = 1;
@@ -293,26 +616,20 @@ class _OverviewState extends State<Overview> {
     List<CircularStackEntry> data = <CircularStackEntry>[
       new CircularStackEntry(
         <CircularSegmentEntry>[
-          new CircularSegmentEntry(confirmed.first, Colors.blueAccent[200],
+          new CircularSegmentEntry(confirmed.first, Colors.blueAccent,
               rankKey: 'Confirmed'),
-          new CircularSegmentEntry(activeCases.first, Colors.greenAccent[200],
+          new CircularSegmentEntry(activeCases.first, Colors.purple,
               rankKey: 'Active'),
-          new CircularSegmentEntry(deaths.first, Colors.red, rankKey: 'Deaths'),
-          new CircularSegmentEntry(recovered.first, Colors.tealAccent[200],
+          new CircularSegmentEntry(recovered.first, Colors.green,
               rankKey: 'Recovered'),
+          new CircularSegmentEntry(deaths.first, Colors.red, rankKey: 'Deaths'),
         ],
         rankKey: 'COVID-19 AFFECTED',
       ),
     ];
     return data;
   }
-  Future loadTotalCases() async {
-    final response = await http.get("https://api.covid19india.org/data.json");
-    if (response.statusCode == 200) {
-      var data = json.decode(response.body);
-      return data;
-    }
-  }
+
   final RefreshController _refreshController = RefreshController();
   @override
   Widget build(BuildContext context) {
@@ -332,29 +649,6 @@ class _OverviewState extends State<Overview> {
             },
             child: ListView(
               children: [
-                Container(
-                  height: 300,
-                  padding: EdgeInsets.all(4),
-                  child: Card(
-                    elevation: 20.0,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Center(child: Text("TOTAL CASES",style: TextStyle(fontWeight: FontWeight.bold,fontSize: 20,),),),
-                        SizedBox(height: 18,),
-                        FutureBuilder(builder: (context,snapshot){
-                          if(snapshot.hasData) {
-                            var total = snapshot.data["statewise"];
-                            return Text(total[0]["confirmed"],style: TextStyle(fontSize: 24,fontWeight: FontWeight.bold,letterSpacing: 2),);
-                          }
-                          else{
-                            return CircularProgressIndicator();
-                          }
-                        },future: loadTotalCases(),)
-                      ],
-                    ),
-                  ),
-                ),
                 Container(
                   padding: EdgeInsets.all(4),
                   child: Card(
@@ -387,13 +681,13 @@ class _OverviewState extends State<Overview> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
                             CircleAvatar(
-                              backgroundColor: Colors.tealAccent[200],
+                              backgroundColor: Colors.purple,
                               radius: 8,
                             ),
                             SizedBox(
                               width: 8,
                             ),
-                            Text("Recovered : " + recovered.first.toString()),
+                            Text("Active : " + activeCases.first.toString()),
                             SizedBox(
                               width: 8,
                             ),
@@ -406,13 +700,13 @@ class _OverviewState extends State<Overview> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
                             CircleAvatar(
-                              backgroundColor: Colors.greenAccent[200],
+                              backgroundColor: Colors.green,
                               radius: 8,
                             ),
                             SizedBox(
                               width: 8,
                             ),
-                            Text("Active : " + activeCases.first.toString()),
+                            Text("Recovered : " + recovered.first.toString()),
                             SizedBox(
                               width: 8,
                             ),
@@ -481,7 +775,6 @@ class _OverviewState extends State<Overview> {
                         SizedBox(
                           height: 8,
                         ),
-
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
@@ -498,7 +791,9 @@ class _OverviewState extends State<Overview> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 8,),
+                        SizedBox(
+                          height: 8,
+                        ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
@@ -556,11 +851,28 @@ class _ExploreState extends State<Explore> {
   List<dynamic> confirmed = List();
   List<dynamic> deaths = List();
   List<dynamic> recovered = List();
-  var totalactive;
-  var totalconfirmed;
-  var totaldeaths;
-  var totalrecovered;
+  List<dynamic> deltaConfirmed = List();
+  List<dynamic> deltaDeaths = List();
+  List<dynamic> deltaRecovered = List();
+  HashMap confirmedCasesMap = HashMap<String, int>();
+  HashMap activeCasesMap = HashMap<String, int>();
+  HashMap recoveredCasesMap = HashMap<String, int>();
+  HashMap deathsMap = HashMap<String, int>();
+  HashMap deltaConfirmedMap = HashMap<String, int>();
+  HashMap deltaRecoveredMap = HashMap<String, int>();
+  HashMap deltaDeathsMap = HashMap<String, int>();
   bool isLoading = false;
+  bool sort = false;
+  int sortingDataType;
+  bool asc = true;
+  LinkedHashMap sortedState;
+  LinkedHashMap sortedConfirmed;
+  LinkedHashMap sortedActive;
+  LinkedHashMap sortedRecovered;
+  LinkedHashMap sortedDeaths;
+  LinkedHashMap sortedDeltaConfirmed;
+  LinkedHashMap sortedDeltaRecovered;
+  LinkedHashMap sortedDeltaDeaths;
 
   void _fetchExploreData() async {
     states.clear();
@@ -568,6 +880,16 @@ class _ExploreState extends State<Explore> {
     confirmed.clear();
     deaths.clear();
     recovered.clear();
+    deltaConfirmed.clear();
+    deltaRecovered.clear();
+    deltaDeaths.clear();
+    confirmedCasesMap.clear();
+    activeCasesMap.clear();
+    recoveredCasesMap.clear();
+    deathsMap.clear();
+    deltaConfirmedMap.clear();
+    deltaRecoveredMap.clear();
+    deltaDeaths.clear();
     setState(() {
       isLoading = true;
     });
@@ -575,28 +897,338 @@ class _ExploreState extends State<Explore> {
     if (response.statusCode == 200) {
       var data = json.decode(response.body);
       var statewiselist = data["statewise"] as List;
+      print("Total: " + statewiselist.length.toString());
       statewiselist.forEach((f) {
-        states.add(f["state"]);
-        activeCases.add(f["active"]);
-        confirmed.add(f["confirmed"]);
-        deaths.add(f["deaths"]);
-        recovered.add(f["recovered"]);
+        if (f["statecode"].compareTo("TT") != 0) {
+          confirmedCasesMap[f["state"]] = int.parse(f["confirmed"]);
+          activeCasesMap[f["state"]] = int.parse(f["active"]);
+          recoveredCasesMap[f["state"]] = int.parse(f["recovered"]);
+          deathsMap[f["state"]] = int.parse(f["deaths"]);
+          deltaConfirmedMap[f["state"]] = int.parse(f["deltaconfirmed"]);
+          deltaRecoveredMap[f["state"]] = int.parse(f["deltarecovered"]);
+          deltaDeathsMap[f["state"]] = int.parse(f["deltadeaths"]);
+        }
       });
-      totalactive = activeCases.first;
-      totalconfirmed = confirmed.first;
-      totaldeaths = deaths.first;
-      totalrecovered = recovered.first;
-      states.removeAt(0);
-      activeCases.removeAt(0);
-      confirmed.removeAt(0);
-      deaths.removeAt(0);
-      recovered.removeAt(0);
+      if (sort) {
+        _sortData();
+      } else {
+        states = confirmedCasesMap.keys.toList();
+        confirmed = confirmedCasesMap.values.toList();
+        activeCases = activeCasesMap.values.toList();
+        recovered = recoveredCasesMap.values.toList();
+        deaths = deathsMap.values.toList();
+        deltaConfirmed = deltaConfirmedMap.values.toList();
+        deltaRecovered = deltaRecoveredMap.values.toList();
+        deltaDeaths = deltaDeathsMap.values.toList();
+      }
       setState(() {
         isLoading = false;
       });
     } else {
       throw Exception("Failed to Load Data");
     }
+  }
+
+  void _sortData() {
+    if (asc) {
+      switch (sortingDataType) {
+        case 1:
+          var sortedkeys = confirmedCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              return k1.toString().compareTo(k2.toString());
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 2:
+          var sortedkeys = confirmedCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(confirmedCasesMap[k1] > confirmedCasesMap[k2]){
+                return 1;
+              }
+              else if(confirmedCasesMap[k1] < confirmedCasesMap[k2]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 3:
+          var sortedkeys = activeCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(activeCasesMap[k1] > activeCasesMap[k2]){
+                return 1;
+              }
+              else if(activeCasesMap[k1] < activeCasesMap[k2]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 4:
+          var sortedkeys = recoveredCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(recoveredCasesMap[k1] > recoveredCasesMap[k2]){
+                return 1;
+              }
+              else if(recoveredCasesMap[k1] < recoveredCasesMap[k2]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 5:
+          var sortedkeys = deathsMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(deathsMap[k1] > deathsMap[k2]){
+                return 1;
+              }
+              else if(deathsMap[k1] < deathsMap[k2]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+      }
+    } else {
+      switch (sortingDataType) {
+        case 1:
+          var sortedkeys = confirmedCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              return k2.toString().compareTo(k1.toString());
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 2:
+          var sortedkeys = confirmedCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(confirmedCasesMap[k2] > confirmedCasesMap[k1]){
+                return 1;
+              }
+              else if(confirmedCasesMap[k2] < confirmedCasesMap[k1]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 3:
+          var sortedkeys = activeCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(activeCasesMap[k2] > activeCasesMap[k1]){
+                return 1;
+              }
+              else if(activeCasesMap[k2] < activeCasesMap[k1]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 4:
+          var sortedkeys = recoveredCasesMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(recoveredCasesMap[k2] > recoveredCasesMap[k1]){
+                return 1;
+              }
+              else if(recoveredCasesMap[k2] < recoveredCasesMap[k1]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+        case 5:
+          var sortedkeys = deathsMap.keys.toList(growable: false)
+            ..sort((k1, k2) {
+              if(deathsMap[k2] > deathsMap[k1]){
+                return 1;
+              }
+              else if(deathsMap[k2] < deathsMap[k1]){
+                return -1;
+              }
+              else{
+                return 0;
+              }
+            });
+          sortedState = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => k);
+          sortedConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => confirmedCasesMap[k]);
+          sortedActive = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => activeCasesMap[k]);
+          sortedRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => recoveredCasesMap[k]);
+          sortedDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deathsMap[k]);
+          sortedDeltaConfirmed = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaConfirmedMap[k]);
+          sortedDeltaRecovered = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaRecoveredMap[k]);
+          sortedDeltaDeaths = new LinkedHashMap.fromIterable(sortedkeys,
+              key: (k) => k, value: (k) => deltaDeathsMap[k]);
+          break;
+      }
+    }
+    states = sortedState.values.toList();
+    confirmed = sortedConfirmed.values.toList();
+    activeCases = sortedActive.values.toList();
+    recovered = sortedRecovered.values.toList();
+    deaths = sortedDeaths.values.toList();
+    deltaConfirmed = sortedDeltaConfirmed.values.toList();
+    deltaRecovered = sortedDeltaRecovered.values.toList();
+    deltaDeaths = sortedDeltaDeaths.values.toList();
   }
 
   @override
@@ -639,68 +1271,143 @@ class _ExploreState extends State<Explore> {
                                       children: [
                                         TableRow(
                                           children: <Widget>[
-                                            Center(
-                                              child: Container(
-                                                  child:
-                                                      Wrap(children: <Widget>[
-                                                Text(
-                                                  "State",
-                                                  softWrap: true,
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.black,
-                                                      fontWeight:
-                                                          FontWeight.bold),
-                                                )
-                                              ])),
+                                            GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  sort = true;
+                                                  sortingDataType = 1;
+                                                  asc = !asc;
+                                                });
+                                                _fetchExploreData();
+                                              },
+                                              child: Center(
+                                                child: Container(
+                                                    child:
+                                                        Wrap(children: <Widget>[
+                                                  Column(
+                                                    children: <Widget>[
+                                                      Text(
+                                                        "State",
+                                                        softWrap: true,
+                                                        textAlign: TextAlign.center,
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.black,
+                                                            fontWeight:
+                                                                FontWeight.bold),
+                                                      ),
+                                                      Icon(asc?Icons.arrow_drop_up:Icons.arrow_drop_down,color: sortingDataType == 1?Colors.black:Colors.grey,)
+                                                    ],
+                                                  )
+                                                ])),
+                                              ),
                                             ),
-                                            Center(
-                                              child: Container(
-                                                  child:
-                                                      Wrap(children: <Widget>[
-                                                Text(
+                                            GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  sort = true;
+                                                  sortingDataType = 2;
+                                                  asc = !asc;
+                                                });
+                                                _fetchExploreData();
+                                              },
+                                              child: Center(
+                                                child: Container(
+                                                    child:
+                                                        Wrap(children: <Widget>[
+                                                  Column(
+                                                    children: <Widget>[
+                                                      Text(
+                                                        "Confirmed",
+                                                        softWrap: true,
+                                                        textAlign: TextAlign.center,
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.black,
+                                                            fontWeight:
+                                                                FontWeight.bold),
+                                                      ),
+                                                      Icon(asc?Icons.arrow_drop_up:Icons.arrow_drop_down,color: sortingDataType == 2?Colors.black:Colors.grey,)
+                                                    ],
+                                                  )
+                                                ])),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    sort = true;
+                                                    sortingDataType = 3;
+                                                    asc = !asc;
+                                                  });
+                                                  _fetchExploreData();
+                                                },
+                                                child: Center(
+                                                    child: Column(
+                                                      children: <Widget>[
+                                                        Text(
                                                   "Active",
                                                   softWrap: true,
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.black,
-                                                      fontWeight:
-                                                          FontWeight.bold),
-                                                )
-                                              ])),
-                                            ),
-                                            Center(
-                                                child: Text(
-                                              "Confirmed",
-                                              softWrap: true,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.bold),
-                                            )),
-                                            Center(
-                                                child: Text(
-                                              "Deaths",
-                                              softWrap: true,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.bold),
-                                            )),
-                                            Center(
-                                                child: Text(
-                                              "Recovered",
-                                              softWrap: true,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.bold),
-                                            ))
+                                                          fontSize: 12,
+                                                          color: Colors.black,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                ),
+                                                        Icon(asc?Icons.arrow_drop_up:Icons.arrow_drop_down,color: sortingDataType == 3?Colors.black:Colors.grey,)
+                                                      ],
+                                                    ))),
+                                            GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    sort = true;
+                                                    sortingDataType = 4;
+                                                    asc = !asc;
+                                                  });
+                                                  _fetchExploreData();
+                                                },
+                                                child: Center(
+                                                    child: Column(
+                                                      children: <Widget>[
+                                                        Text(
+                                                  "Recovered",
+                                                  softWrap: true,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.black,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                ),
+                                                        Icon(asc?Icons.arrow_drop_up:Icons.arrow_drop_down,color: sortingDataType == 4?Colors.black:Colors.grey,)
+                                                      ],
+                                                    ))),
+                                            GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    sort = true;
+                                                    sortingDataType = 5;
+                                                    asc = !asc;
+                                                  });
+                                                  _fetchExploreData();
+                                                },
+                                                child: Center(
+                                                    child: Column(
+                                                      children: <Widget>[
+                                                        Text(
+                                                  "Deaths",
+                                                  softWrap: true,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.black,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                ),
+                                                        Icon(asc?Icons.arrow_drop_up:Icons.arrow_drop_down,color: sortingDataType == 5?Colors.black:Colors.grey,)
+                                                      ],
+                                                    )))
                                           ],
                                         ),
                                       ],
@@ -738,13 +1445,51 @@ class _ExploreState extends State<Explore> {
                                                         .middle,
                                                 child: Wrap(children: <Widget>[
                                                   Center(
-                                                      child: Text(
-                                                    activeCases
-                                                        .elementAt(index),
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                    ),
-                                                  )),
+                                                    child: deltaConfirmed
+                                                                .elementAt(
+                                                                    index) !=
+                                                            0
+                                                        ? Column(
+                                                            children: <Widget>[
+                                                              Text(
+                                                                confirmed
+                                                                    .elementAt(
+                                                                        index)
+                                                                    .toString(),
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 12,
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                height: 8,
+                                                              ),
+                                                              Text(
+                                                                "[+" +
+                                                                    deltaConfirmed
+                                                                        .elementAt(
+                                                                            index)
+                                                                        .toString() +
+                                                                    "]",
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    color: Colors
+                                                                            .red[
+                                                                        300]),
+                                                              ),
+                                                            ],
+                                                          )
+                                                        : Text(
+                                                            confirmed
+                                                                .elementAt(
+                                                                    index)
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                  ),
                                                 ])),
                                             TableCell(
                                                 verticalAlignment:
@@ -752,7 +1497,9 @@ class _ExploreState extends State<Explore> {
                                                         .middle,
                                                 child: Center(
                                                     child: Text(
-                                                  confirmed.elementAt(index),
+                                                  activeCases
+                                                      .elementAt(index)
+                                                      .toString(),
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                   ),
@@ -762,23 +1509,97 @@ class _ExploreState extends State<Explore> {
                                                     TableCellVerticalAlignment
                                                         .middle,
                                                 child: Center(
-                                                    child: Text(
-                                                  deaths.elementAt(index),
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                  ),
-                                                ))),
+                                                  child: deltaRecovered
+                                                              .elementAt(
+                                                                  index) !=
+                                                          0
+                                                      ? Column(
+                                                          children: <Widget>[
+                                                            Text(
+                                                              recovered
+                                                                  .elementAt(
+                                                                      index)
+                                                                  .toString(),
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                            SizedBox(
+                                                              height: 8,
+                                                            ),
+                                                            Text(
+                                                              "[+" +
+                                                                  deltaRecovered
+                                                                      .elementAt(
+                                                                          index)
+                                                                      .toString() +
+                                                                  "]",
+                                                              style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: Colors
+                                                                          .green[
+                                                                      300]),
+                                                            ),
+                                                          ],
+                                                        )
+                                                      : Text(
+                                                          recovered
+                                                              .elementAt(index)
+                                                              .toString(),
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                )),
                                             TableCell(
                                                 verticalAlignment:
                                                     TableCellVerticalAlignment
                                                         .middle,
                                                 child: Center(
-                                                    child: Text(
-                                                  recovered.elementAt(index),
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                  ),
-                                                ))),
+                                                    child: deltaDeaths
+                                                                .elementAt(
+                                                                    index) !=
+                                                            0
+                                                        ? Column(
+                                                            children: <Widget>[
+                                                              Text(
+                                                                deaths
+                                                                    .elementAt(
+                                                                        index)
+                                                                    .toString(),
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 12,
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                height: 8,
+                                                              ),
+                                                              Text(
+                                                                "[+" +
+                                                                    deltaDeaths
+                                                                        .elementAt(
+                                                                            index)
+                                                                        .toString() +
+                                                                    "]",
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    color: Colors
+                                                                            .red[
+                                                                        300]),
+                                                              ),
+                                                            ],
+                                                          )
+                                                        : Text(
+                                                            deaths
+                                                                .elementAt(
+                                                                    index)
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                            ),
+                                                          ))),
                                           ]),
                                         ],
                                       ),
@@ -817,12 +1638,46 @@ class _ExploreState extends State<Explore> {
                                                     .middle,
                                             child: Wrap(children: <Widget>[
                                               Center(
-                                                  child: Text(
-                                                activeCases.elementAt(index),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                ),
-                                              )),
+                                                child: deltaConfirmed
+                                                            .elementAt(index) !=
+                                                        0
+                                                    ? Column(
+                                                        children: <Widget>[
+                                                          Text(
+                                                            confirmed
+                                                                .elementAt(
+                                                                    index)
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                          SizedBox(
+                                                            height: 8,
+                                                          ),
+                                                          Text(
+                                                            "[+" +
+                                                                deltaConfirmed
+                                                                    .elementAt(
+                                                                        index)
+                                                                    .toString() +
+                                                                "]",
+                                                            style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors
+                                                                    .red[300]),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : Text(
+                                                        confirmed
+                                                            .elementAt(index)
+                                                            .toString(),
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                              ),
                                             ])),
                                         TableCell(
                                             verticalAlignment:
@@ -830,7 +1685,9 @@ class _ExploreState extends State<Explore> {
                                                     .middle,
                                             child: Center(
                                                 child: Text(
-                                              confirmed.elementAt(index),
+                                              activeCases
+                                                  .elementAt(index)
+                                                  .toString(),
                                               style: TextStyle(
                                                 fontSize: 12,
                                               ),
@@ -840,23 +1697,90 @@ class _ExploreState extends State<Explore> {
                                                 TableCellVerticalAlignment
                                                     .middle,
                                             child: Center(
-                                                child: Text(
-                                              deaths.elementAt(index),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                              ),
-                                            ))),
+                                                child: deltaRecovered
+                                                            .elementAt(index) !=
+                                                        0
+                                                    ? Column(
+                                                        children: <Widget>[
+                                                          Text(
+                                                            recovered
+                                                                .elementAt(
+                                                                    index)
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                          SizedBox(
+                                                            height: 8,
+                                                          ),
+                                                          Text(
+                                                            "[+" +
+                                                                deltaRecovered
+                                                                    .elementAt(
+                                                                        index)
+                                                                    .toString() +
+                                                                "]",
+                                                            style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors
+                                                                        .green[
+                                                                    300]),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : Text(
+                                                        recovered
+                                                            .elementAt(index)
+                                                            .toString(),
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ))),
                                         TableCell(
                                             verticalAlignment:
                                                 TableCellVerticalAlignment
                                                     .middle,
                                             child: Center(
-                                                child: Text(
-                                              recovered.elementAt(index),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                              ),
-                                            ))),
+                                                child: deltaDeaths
+                                                            .elementAt(index) !=
+                                                        0
+                                                    ? Column(
+                                                        children: <Widget>[
+                                                          Text(
+                                                            deaths
+                                                                .elementAt(
+                                                                    index)
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                          SizedBox(
+                                                            height: 8,
+                                                          ),
+                                                          Text(
+                                                            "[+" +
+                                                                deltaDeaths
+                                                                    .elementAt(
+                                                                        index)
+                                                                    .toString() +
+                                                                "]",
+                                                            style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors
+                                                                    .red[300]),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : Text(
+                                                        deaths
+                                                            .elementAt(index)
+                                                            .toString(),
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                        ),
+                                                      ))),
                                       ]),
                                     ],
                                   ),
