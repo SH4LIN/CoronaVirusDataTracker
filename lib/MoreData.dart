@@ -150,9 +150,11 @@ class _DisplayDataState extends State<DisplayData> {
   }
 
   final RefreshController _refreshController = RefreshController();
-  bool sortAlpha = true;
-  bool sort = false;
-  bool sortType = true;
+  bool sortAlpha = false;
+  bool sort = true;
+  //SORT TYPE: TRUE =  ASCENDING
+  //SORT TYPE: FALSE =  DESCENDING
+  bool sortType = false;
   @override
   Widget build(BuildContext context) {
     return isAvailable

@@ -862,9 +862,9 @@ class _ExploreState extends State<Explore> {
   HashMap deltaRecoveredMap = HashMap<String, int>();
   HashMap deltaDeathsMap = HashMap<String, int>();
   bool isLoading = false;
-  bool sort = false;
-  int sortingDataType;
-  bool asc = true;
+  bool sort = true;
+  int sortingDataType = 2;
+  bool asc = false;
   LinkedHashMap sortedState;
   LinkedHashMap sortedConfirmed;
   LinkedHashMap sortedActive;
